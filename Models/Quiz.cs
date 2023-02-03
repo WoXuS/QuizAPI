@@ -1,8 +1,6 @@
-﻿using QuizAPI.Interfaces;
+﻿namespace QuizAPI.Models;
 
-namespace QuizAPI.Models;
-
-public class Quiz : IEntity
+public class Quiz
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
