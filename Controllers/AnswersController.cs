@@ -1,76 +1,97 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using QuizAPI.Models;
 
 namespace QuizAPI.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/users/{userId}/quizzes/{quizId}/questions/{questionId}/answers")]
 [ApiController]
 public class AnswersController : ControllerBase
 {
-    private readonly Db _context;
+    private readonly Db db;
 
     public AnswersController(Db context)
     {
-        _context = context;
+        db = context;
     }
 
-    // GET: api/Answers
+    // GET: api/users/1/quizzes/2/questions/3/answers
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Answer>>> GetAnswers()
+    public async Task<ActionResult<IEnumerable<Answer>>> GetAnswers(int userId, int quizId, int questionId)
     {
-        return await _context.Answers.ToListAsync();
+        var question = await db.GetQuestion(userId, quizId, questionId);
+        if (question is null)
+        {
+            return NotFound();
+        }
+
+        return question.Answers;
     }
 
-    // GET: api/Answers/5
+    // GET: api/users/1/quizzes/2/questions/3/answers/4
     [HttpGet("{id}")]
-    public async Task<ActionResult<Answer>> GetAnswer(int id)
+    public async Task<ActionResult<Answer>> GetAnswer(int userId, int quizId, int questionId, int id)
     {
-        return await _context.Answers.FindAsync(id)
+        var question = await db.GetQuestion(userId, quizId, questionId);
+
+        return question?.Answers.FirstOrDefault(a => a.Id == id)
             is Answer answer
                 ? Ok(answer)
                 : NotFound();
     }
 
-    // PUT: api/Answers/5
+    // PUT: api/users/1/quizzes/2/questions/3/answers/4
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutAnswer(int id, Answer answer)
+    public async Task<IActionResult> PutAnswer(int userId, int quizId, int questionId, int id, Answer answer)
     {
         if (id != answer.Id)
         {
             return BadRequest();
         }
 
-        var exists = await _context.Answers.AnyAsync(a => a.Id == id);
-       if (!exists)
+        var question = await db.GetQuestion(userId, quizId, questionId, true);
+        if (question is null)
         {
             return NotFound();
         }
 
-        _context.Update(answer);
-        await _context.SaveChangesAsync();
+        var exists = question.Answers.Any(a => a.Id == id);
+        if (!exists)
+        {
+            return NotFound();
+        }
+
+        db.Update(answer);
+        await db.SaveChangesAsync();
 
         return NoContent();
     }
 
-    // POST: api/Answers
+    // POST: api/users/1/quizzes/2/questions/3/answers
     [HttpPost]
-    public async Task<ActionResult<Answer>> PostAnswer(Answer answer)
+    public async Task<ActionResult<Answer>> PostAnswer(int userId, int quizId, int questionId, Answer answer)
     {
-        _context.Answers.Add(answer);
-        await _context.SaveChangesAsync();
+        var question = await db.GetQuestion(userId, quizId, questionId);
+        if (question is null)
+        {
+            return NotFound();
+        }
 
-        return CreatedAtAction(nameof(GetAnswer), new { id = answer.Id }, answer);
+        question.Answers.Add(answer);
+        await db.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetAnswer), new { userId, quizId, questionId, id = answer.Id }, answer);
     }
 
-    // DELETE: api/Answers/5
+    // DELETE: api/users/1/quizzes/2/questions/3/answers/4
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteAnswer(int id)
+    public async Task<IActionResult> DeleteAnswer(int userId, int quizId, int questionId, int id)
     {
-        if (await _context.Answers.FindAsync(id) is Answer answer)
+        var question = await db.GetQuestion(userId, quizId, questionId);
+
+        if (question?.Answers.FirstOrDefault(a => a.Id == id) is Answer answer)
         {
-            _context.Answers.Remove(answer);
-            await _context.SaveChangesAsync();
+            question.Answers.Remove(answer);
+            await db.SaveChangesAsync();
             return NoContent();
         }
 

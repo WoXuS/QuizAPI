@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using QuizAPI.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,7 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddDbContext<Db>(opt 
-    => opt.UseSqlServer("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=QuizAPI;Integrated Security=True"));
+    //=> opt.UseSqlServer("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=QuizAPI;Integrated Security=True"));
+    => opt.UseInMemoryDatabase("QuizAPI"));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

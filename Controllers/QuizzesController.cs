@@ -1,10 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using QuizAPI.Models;
 
 namespace QuizAPI.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/users/{userId}/quizzes")]
 [ApiController]
 public class QuizzesController : ControllerBase
 {
@@ -15,37 +14,48 @@ public class QuizzesController : ControllerBase
         db = context;
     }
 
-    // GET: api/Quiz
+    // GET: api/users/1/quizzes
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Quiz>>> GetQuizzes()
+    public async Task<ActionResult<IEnumerable<Quiz>>> GetQuizzes(int userId)
     {
-        return await db.Quizzes.ToListAsync();
+        var user = await db.GetUser(userId);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        return user.Quizzes;
     }
 
-    // GET: api/Quiz/5
+
+    // GET: api/users/1/quizzes/5
     [HttpGet("{id}")]
-    public async Task<ActionResult<Quiz>> GetQuiz(int id)
+    public async Task<ActionResult<Quiz>> GetQuiz(int userId, int id)
     {
-        return await db.Quizzes
-            .Include(q => q.Questions)
-            .ThenInclude(q => q.Answers)
-            .FirstOrDefaultAsync(q => q.Id == id)
+        var user = await db.GetUser(userId);
+
+        return user?.Quizzes.FirstOrDefault(q => q.Id == id)
             is Quiz quiz
                 ? Ok(quiz)
                 : NotFound();
     }
 
-    // PUT: api/Quiz/5
+    // PUT: api/users/1/quizzes/5
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutQuiz(int id, Quiz quiz)
+    public async Task<IActionResult> PutQuiz(int userId, int id, Quiz quiz)
     {
         if (id != quiz.Id)
         {
             return BadRequest();
         }
 
-        var exists = await db.Quizzes.AnyAsync(q => q.Id == id);
+        var user = await db.GetUser(userId, true);
+        if (user is null)
+        {
+            return NotFound();
+        }
 
+        var exists = user.Quizzes.Any(q => q.Id == id);
         if (!exists)
         {
             return NotFound();
@@ -57,22 +67,34 @@ public class QuizzesController : ControllerBase
         return NoContent();
     }
 
-    // POST: api/Quiz
+    // POST: api/users/1/quizzes
     [HttpPost]
-    public async Task<ActionResult<Quiz>> PostQuiz(Quiz quiz)
+    public async Task<ActionResult<Quiz>> PostQuiz(int userId, Quiz quiz)
     {
-        db.Quizzes.Add(quiz);
+        var user = await db.GetUser(userId);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        user.Quizzes.Add(quiz);
         await db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetQuiz), new { id = quiz.Id }, quiz);
+        return CreatedAtAction(nameof(GetQuiz), new { userId, id = quiz.Id }, quiz);
     }
 
-    // DELETE: api/Quiz/5
+    // DELETE: api/users/1/quizzes/5
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteQuiz(int id)
+    public async Task<IActionResult> DeleteQuiz(int userId, int id)
     {
-        if (await db.Quizzes.FindAsync(id) is Quiz quiz)
+        var user = await db.GetUser(userId);
+        if (user is null)
         {
-            db.Quizzes.Remove(quiz);
+            return NotFound();
+        }
+
+        if (user.Quizzes.FirstOrDefault(q => q.Id == id) is Quiz quiz)
+        {
+            user.Quizzes.Remove(quiz);
             await db.SaveChangesAsync();
             return NoContent();
         }
