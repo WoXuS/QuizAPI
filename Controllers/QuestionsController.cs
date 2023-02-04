@@ -44,8 +44,6 @@ public class QuestionsController : ControllerBase
         }
 
         var exists = await _context.Questions.AnyAsync(q => q.Id == id);
-        _context.Entry(question).State = EntityState.Modified;
-
        if (!exists)
         {
             return NotFound();

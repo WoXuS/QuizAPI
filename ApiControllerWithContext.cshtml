@@ -56,9 +56,7 @@ public class @Model.ControllerName : ControllerBase
         }
 
         var exists = await _context.@(entitySetName).AnyAsync(@(Model.ModelVariable[0]) => @(Model.ModelVariable[0]).@primaryKeyName == id);
-        _context.Entry(@Model.ModelVariable).State = EntityState.Modified;
-
-       if (!exists)
+        if (!exists)
         {
             return NotFound();
         }
