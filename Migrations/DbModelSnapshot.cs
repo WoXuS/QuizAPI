@@ -43,7 +43,7 @@ namespace QuizAPI.Migrations
 
                     b.HasIndex("QuestionId");
 
-                    b.ToTable("Answers");
+                    b.ToTable("Answers", (string)null);
                 });
 
             modelBuilder.Entity("QuizAPI.Models.Question", b =>
@@ -53,9 +53,6 @@ namespace QuizAPI.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("IsOpen")
-                        .HasColumnType("bit");
 
                     b.Property<int>("QuizId")
                         .HasColumnType("int");
@@ -68,7 +65,7 @@ namespace QuizAPI.Migrations
 
                     b.HasIndex("QuizId");
 
-                    b.ToTable("Questions");
+                    b.ToTable("Questions", (string)null);
                 });
 
             modelBuilder.Entity("QuizAPI.Models.Quiz", b =>
@@ -94,7 +91,7 @@ namespace QuizAPI.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Quizzes");
+                    b.ToTable("Quizzes", (string)null);
                 });
 
             modelBuilder.Entity("QuizAPI.Models.User", b =>
@@ -111,7 +108,7 @@ namespace QuizAPI.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("QuizAPI.Models.Answer", b =>

@@ -6,7 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers();
-builder.Services.AddDbContext<Db>(opt 
+builder.Services.AddDbContext<Db>(opt
     //=> opt.UseSqlServer("Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=QuizAPI;Integrated Security=True"));
     => opt.UseInMemoryDatabase("QuizAPI"));
 builder.Services.AddEndpointsApiExplorer();

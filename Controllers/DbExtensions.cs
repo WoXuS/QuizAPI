@@ -64,5 +64,13 @@ public static class DbExtensions
         var question = quiz.Questions.FirstOrDefault(q => q.Id == questionId);
         return question;
     }
+    
+    public static async Task<User?> GetUserWithAttempts(this Db db, int userId)
+    {
+        var user = await db.Users
+            .Include(x => x.Attempts)
+            .FirstOrDefaultAsync(u => u.Id == userId);
 
+        return user;
+    }
 }

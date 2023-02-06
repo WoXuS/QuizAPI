@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 @{
     foreach (var namespaceName in Model.RequiredNamespaces)
     {
-        @:using @namespaceName;
+@:using @namespaceName;
     }
 }
 
@@ -42,7 +42,7 @@ public class @Model.ControllerName : ControllerBase
     {
         return await _context.@(entitySetName).FindAsync(id)
             is @Model.ModelTypeName @Model.ModelVariable
-                ? Ok(@Model.ModelVariable)
+                ? @Model.ModelVariable
                 : NotFound();
     }
 
