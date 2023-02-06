@@ -35,7 +35,7 @@ public class QuestionsController : ControllerBase
 
         return quiz?.Questions.FirstOrDefault(q => q.Id == id)
             is Question question
-                ? Ok(question)
+                ? question
                 : NotFound();
     }
 

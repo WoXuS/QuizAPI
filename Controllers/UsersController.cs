@@ -28,7 +28,7 @@ public class UsersController : ControllerBase
     {
         return await db.Users.FindAsync(id)
             is User user
-                ? Ok(user)
+                ? user
                 : NotFound();
     }
 
