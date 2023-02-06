@@ -39,7 +39,7 @@ public static class DbExtensions
         return quiz;
     }
 
-    public static async Task<Question?> GetQuestion(this Db db, int userId, int quizId, int questionId, bool AsNoTracking = false)
+    public static async Task<(Quiz, Question?)> GetQuestion(this Db db, int userId, int quizId, int questionId, bool AsNoTracking = false)
     {
         var query = db.Users
            .Include(u => u.Quizzes)
@@ -52,17 +52,17 @@ public static class DbExtensions
             );
         if (user is null)
         {
-            return null;
+            return (null!, null);
         }
 
         var quiz = user.Quizzes.FirstOrDefault(quiz => quiz.Id == quizId);
         if (quiz is null)
         {
-            return null;
+            return (null!, null);
         }
 
         var question = quiz.Questions.FirstOrDefault(q => q.Id == questionId);
-        return question;
+        return (quiz, question);
     }
     
     public static async Task<User?> GetUserWithAttempts(this Db db, int userId)

@@ -18,7 +18,7 @@ public class AnswersController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Answer>>> GetAnswers(int userId, int quizId, int questionId)
     {
-        var question = await db.GetQuestion(userId, quizId, questionId);
+        var (_, question) = await db.GetQuestion(userId, quizId, questionId);
         if (question is null)
         {
             return NotFound();
@@ -31,7 +31,7 @@ public class AnswersController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Answer>> GetAnswer(int userId, int quizId, int questionId, int id)
     {
-        var question = await db.GetQuestion(userId, quizId, questionId);
+        var (_, question) = await db.GetQuestion(userId, quizId, questionId);
 
         return question?.Answers.FirstOrDefault(a => a.Id == id)
             is Answer answer
@@ -48,10 +48,14 @@ public class AnswersController : ControllerBase
             return BadRequest();
         }
 
-        var question = await db.GetQuestion(userId, quizId, questionId, true);
+        var (quiz, question) = await db.GetQuestion(userId, quizId, questionId, true);
         if (question is null)
         {
             return NotFound();
+        }
+        if (quiz.IsOpen)
+        {
+            return Conflict();
         }
 
         var exists = question.Answers.Any(a => a.Id == id);
@@ -70,10 +74,14 @@ public class AnswersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Answer>> PostAnswer(int userId, int quizId, int questionId, Answer answer)
     {
-        var question = await db.GetQuestion(userId, quizId, questionId);
+        var (quiz, question) = await db.GetQuestion(userId, quizId, questionId);
         if (question is null)
         {
             return NotFound();
+        }
+        if (quiz.IsOpen)
+        {
+            return Conflict();
         }
 
         question.Answers.Add(answer);
@@ -86,7 +94,11 @@ public class AnswersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAnswer(int userId, int quizId, int questionId, int id)
     {
-        var question = await db.GetQuestion(userId, quizId, questionId);
+        var (quiz, question) = await db.GetQuestion(userId, quizId, questionId);
+        if (quiz.IsOpen)
+        {
+            return Conflict();
+        }
 
         if (question?.Answers.FirstOrDefault(a => a.Id == id) is Answer answer)
         {

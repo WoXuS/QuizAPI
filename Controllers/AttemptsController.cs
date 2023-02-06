@@ -122,7 +122,7 @@ public class AttemptsController : ControllerBase
 
         if (!quiz.IsOpen)
         {
-            return NotFound();
+            return Conflict();
         }
 
         SetQuesionOrder(attempt, quiz);

@@ -53,6 +53,10 @@ public class QuestionsController : ControllerBase
         {
             return NotFound();
         }
+        if (quiz.IsOpen)
+        {
+            return Conflict();
+        }
 
         var exists = quiz.Questions.Any(q => q.Id == id);
         if (!exists)
@@ -75,6 +79,10 @@ public class QuestionsController : ControllerBase
         {
             return NotFound();
         }
+        if (quiz.IsOpen)
+        {
+            return Conflict();
+        }
 
         quiz.Questions.Add(question);
         await db.SaveChangesAsync();
@@ -90,6 +98,10 @@ public class QuestionsController : ControllerBase
         if (quiz is null)
         {
             return NotFound();
+        }
+        if (quiz.IsOpen)
+        {
+            return Conflict();
         }
 
         if (quiz.Questions.FirstOrDefault(q => q.Id == id) is Question question)

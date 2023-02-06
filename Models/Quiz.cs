@@ -1,4 +1,6 @@
-﻿namespace QuizAPI.Models;
+﻿using System.Text.Json.Serialization;
+
+namespace QuizAPI.Models;
 
 public class Quiz
 {
@@ -6,5 +8,7 @@ public class Quiz
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
     public bool IsOpen { get; set; } = false;
+
+    [JsonIgnore]
     public List<Question> Questions { get; set; } = new();
 }

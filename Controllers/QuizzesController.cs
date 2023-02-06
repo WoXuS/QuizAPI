@@ -55,13 +55,45 @@ public class QuizzesController : ControllerBase
             return NotFound();
         }
 
-        var exists = user.Quizzes.Any(q => q.Id == id);
-        if (!exists)
+        var existing = user.Quizzes.FirstOrDefault(q => q.Id == id);
+        if (existing is null)
+        {
+            return NotFound();
+        }
+        if (existing.IsOpen)
+        {
+            return Conflict();
+        }
+
+        quiz.IsOpen = false;
+        db.Update(quiz);
+        await db.SaveChangesAsync();
+
+        return NoContent();
+    }
+    
+    // PUT: api/users/1/quizzes/5/open
+    [HttpPut("{id}/open")]
+    public async Task<IActionResult> OpenQuiz(int userId, int id)
+    {
+        var user = await db.GetUser(userId);
+        if (user is null)
         {
             return NotFound();
         }
 
-        db.Update(quiz);
+        var existing = user.Quizzes.FirstOrDefault(q => q.Id == id);
+        if (existing is null)
+        {
+            return NotFound();
+        }
+
+        if (existing.IsOpen)
+        {
+            return Conflict();
+        }
+
+        existing.IsOpen = true;
         await db.SaveChangesAsync();
 
         return NoContent();
@@ -76,6 +108,8 @@ public class QuizzesController : ControllerBase
         {
             return NotFound();
         }
+
+        quiz.IsOpen = false;
 
         user.Quizzes.Add(quiz);
         await db.SaveChangesAsync();
@@ -94,6 +128,11 @@ public class QuizzesController : ControllerBase
 
         if (user.Quizzes.FirstOrDefault(q => q.Id == id) is Quiz quiz)
         {
+            if (quiz.IsOpen)
+            {
+                return Conflict();
+            }
+
             user.Quizzes.Remove(quiz);
             await db.SaveChangesAsync();
             return NoContent();
