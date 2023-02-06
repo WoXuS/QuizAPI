@@ -71,6 +71,10 @@ public class AttemptsController : ControllerBase
         {
             return NotFound();
         }
+        if (!existing.IsOpen)
+        {
+            return Conflict();
+        }
 
         var updateIsValid = IsUpdateValid(attempt, existing, quiz);
         if (!updateIsValid) 
@@ -100,6 +104,32 @@ public class AttemptsController : ControllerBase
             return allNewAreValid;
         }
     }
+    
+    // PUT: api/users/1/attempts/2/close
+    [HttpPut("{id}/close")]
+    public async Task<IActionResult> CloseAttempt(int userId, int id)
+    {
+        var user = await db.GetUserWithAttempts(userId);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        var existing = user.Attempts.FirstOrDefault(a => a.Id == id);
+        if (existing is null)
+        {
+            return NotFound();
+        }
+        if (!existing.IsOpen)
+        {
+            return Conflict();
+        }
+
+        existing.IsOpen = false;
+        await db.SaveChangesAsync();
+
+        return NoContent();
+    }
 
     // POST: api/users/1/attempts
     [HttpPost]
@@ -127,6 +157,7 @@ public class AttemptsController : ControllerBase
 
         SetQuesionOrder(attempt, quiz);
         attempt.ChosenAnswers = Array.Empty<int>();
+        attempt.IsOpen = true;
         user.Attempts.Add(attempt);
 
         await db.SaveChangesAsync();

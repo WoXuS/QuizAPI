@@ -7,8 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddDbContext<Db>(opt
-    //=> opt.UseSqlServer(builder.Configuration.GetConnectionString("QuizApiDb")));
-    => opt.UseInMemoryDatabase("QuizAPI"));
+    => opt.UseSqlServer(builder.Configuration.GetConnectionString("QuizApiDb")));
+    //=> opt.UseInMemoryDatabase("QuizAPI"));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
