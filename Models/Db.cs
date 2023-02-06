@@ -53,7 +53,8 @@ public class Db : DbContext
                 .HasOne<Quiz>()
                 .WithMany()
                 .HasForeignKey(a => a.QuizId)
-                .IsRequired();
+                .IsRequired()
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<Attempt>()
                 .Property(a => a.QuestionOrder)
