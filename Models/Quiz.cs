@@ -10,5 +10,8 @@ public class Quiz
     public bool IsOpen { get; set; } = false;
 
     [JsonIgnore]
+    public string UserId { get; set; } = "";
+    
+    [JsonIgnore]
     public List<Question> Questions { get; set; } = new();
 }

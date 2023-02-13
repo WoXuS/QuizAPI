@@ -1,10 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QuizAPI.Attributes;
 using QuizAPI.Models;
+using QuizAPI.Utils;
 
 namespace QuizAPI.Controllers;
 
-[Route("api/users/{userId}/attempts")]
+[AuthorizeJwt]
+[Route("api/attempts")]
 [ApiController]
 public class AttemptsController : ControllerBase
 {
@@ -15,58 +18,37 @@ public class AttemptsController : ControllerBase
         db = context;
     }
 
-    // GET: api/users/1/attempts
+    // GET: api/attempts
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Attempt>>> GetAttempts(int userId)
+    public async Task<ActionResult<IEnumerable<Attempt>>> GetAttempts()
     {
-        var user = await db.GetUserWithAttempts(userId);
+        var userId = User.GetUserID();
+        var attempts = db.Attempts.Where(x => x.UserId == userId);
 
-        if (user is null)
-        {
-            return NotFound();
-        }
-
-        return user.Attempts;
+        return await attempts.ToListAsync();
     }
 
-    // GET: api/users/1/attempts/2
+    // GET: api/attempts/2
     [HttpGet("{id}")]
-    public async Task<ActionResult<Attempt>> GetAttempt(int userId, int id)
+    public async Task<ActionResult<Attempt>> GetAttempt(int id)
     {
-        var user = await db.GetUserWithAttempts(userId);
+        var userId = User.GetUserID();
 
-        return user?.Attempts.FirstOrDefault(a => a.Id == id)
+        return await db.Attempts.FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId)
             is Attempt attempt
                 ? attempt
                 : NotFound();
     }
 
-    // PUT: api/users/1/attempts/2
-    [HttpPut("{id}")]
-    public async Task<IActionResult> PutAttempt(int userId, int id, Attempt attempt)
+    public record AttemptUpdateDto(int[] ChosenAnswers);
+
+    // PATCH: api/attempts/2
+    [HttpPatch("{id}")]
+    public async Task<IActionResult> PutAttempt(int id, AttemptUpdateDto dto)
     {
-        if (id != attempt.Id)
-        {
-            return BadRequest();
-        }
+        var userId = User.GetUserID();
 
-        var user = await db.GetUserWithAttempts(userId);
-        if (user is null)
-        {
-            return NotFound();
-        }
-
-        var quiz = await db.Quizzes
-            .Include(q => q.Questions)
-            .ThenInclude(q => q.Answers)
-            .FirstOrDefaultAsync(q => q.Id == attempt.QuizId);
-
-        if (quiz is null)
-        {
-            return NotFound();
-        }
-
-        var existing = user.Attempts.FirstOrDefault(a => a.Id == id);
+        var existing = await db.Attempts.FirstOrDefaultAsync(a => a.Id == id);
         if (existing is null)
         {
             return NotFound();
@@ -76,46 +58,38 @@ public class AttemptsController : ControllerBase
             return Conflict();
         }
 
-        var updateIsValid = IsUpdateValid(attempt, existing, quiz);
-        if (!updateIsValid) 
+        var updateIsValid = IsUpdateValid(dto, existing);
+        if (!updateIsValid)
         {
             return NotFound();
         }
 
-        existing.ChosenAnswers = attempt.ChosenAnswers;
+        existing.ChosenAnswers = dto.ChosenAnswers;
         await db.SaveChangesAsync();
 
         return NoContent();
 
 
-
-        bool IsUpdateValid(Attempt attempt, Attempt existing, Quiz quiz)
+        bool IsUpdateValid(AttemptUpdateDto dto, Attempt existing)
         {
-            var newAnswers = attempt.ChosenAnswers
+            var newAnswers = dto.ChosenAnswers
                 .Except(existing.ChosenAnswers)
                 .ToArray();
 
-            var validAnswerIds = quiz.Questions
+            var validAnswerIds = existing.QuizCopy.Questions
                 .SelectMany(q => q.Answers)
                 .Select(a => a.Id)
                 .ToArray();
 
-            var allNewAreValid = newAnswers.All(a => validAnswerIds.Contains(a));
-            return allNewAreValid;
+            return newAnswers.All(a => validAnswerIds.Contains(a));
         }
     }
-    
-    // PUT: api/users/1/attempts/2/close
-    [HttpPut("{id}/close")]
-    public async Task<IActionResult> CloseAttempt(int userId, int id)
-    {
-        var user = await db.GetUserWithAttempts(userId);
-        if (user is null)
-        {
-            return NotFound();
-        }
 
-        var existing = user.Attempts.FirstOrDefault(a => a.Id == id);
+    // PATCH: api/attempts/2/close
+    [HttpPatch("{id}/close")]
+    public async Task<IActionResult> CloseAttempt(int id)
+    {
+        var existing = await db.Attempts.FirstOrDefaultAsync(a => a.Id == id);
         if (existing is null)
         {
             return NotFound();
@@ -126,24 +100,50 @@ public class AttemptsController : ControllerBase
         }
 
         existing.IsOpen = false;
+        existing.Result = CreatedResult(existing);
         await db.SaveChangesAsync();
 
         return NoContent();
     }
 
-    // POST: api/users/1/attempts
-    [HttpPost]
-    public async Task<ActionResult<Attempt>> PostAttempt(int userId, Attempt attempt)
+    private Result CreatedResult(Attempt existing)
     {
-        var user = await db.GetUserWithAttempts(userId);
-        if (user is null)
+        var answers = existing.QuizCopy.Questions
+                .SelectMany(q => q.Answers)
+                .Select(a => new { a.Id, a.IsCorrect })
+                .GroupBy(a => a.IsCorrect);
+
+        var corrects = answers.Single(g => g.Key is true)
+            .Select(a => a.Id)
+            .ToList();
+
+        var incorrects = answers.Single(g => g.Key is false)
+            .Select(a => a.Id)
+            .ToList();
+
+        var chosen = existing.ChosenAnswers;
+
+        var result = new Result
         {
-            return NotFound();
-        }
+            Submitted = DateTime.UtcNow,
+            AllCorrectAnswers = corrects.Count,
+            ChosenCorrectAnswers = chosen.Intersect(corrects).Count(),
+            ChosenIncorrectAnswers = chosen.Intersect(incorrects).Count()
+        };
+
+        return result;
+    }
+
+    // POST: api/attempts
+    [HttpPost]
+    public async Task<ActionResult<Attempt>> PostAttempt(int quizId)
+    {
+        var userId = User.GetUserID();
 
         var quiz = await db.Quizzes
             .Include(q => q.Questions)
-            .FirstOrDefaultAsync(q => q.Id == attempt.QuizId);
+            .ThenInclude(q => q.Answers)
+            .FirstOrDefaultAsync(q => q.Id == quizId);
 
         if (quiz is null)
         {
@@ -155,38 +155,58 @@ public class AttemptsController : ControllerBase
             return Conflict();
         }
 
-        SetQuesionOrder(attempt, quiz);
-        attempt.ChosenAnswers = Array.Empty<int>();
-        attempt.IsOpen = true;
-        user.Attempts.Add(attempt);
+        var questionOrder = GetQuesionOrder(quiz.Questions);
 
+        var attempt = new Attempt
+        {
+            QuizId = quizId,
+            IsOpen = true,
+            QuestionOrder = questionOrder,
+            UserId = userId!,
+            QuizCopy = new() {
+                Id = quiz.Id,
+                Description = quiz.Description,
+                Name= quiz.Name,
+                Questions = CopyQuestionsInOrder(quiz.Questions, questionOrder),
+                UserId = quiz.UserId
+            } 
+        };
+
+        db.Attempts.Add(attempt);
         await db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetAttempt), new { userId, id = attempt.Id }, attempt);
+        return CreatedAtAction(nameof(GetAttempt), new { id = attempt.Id }, attempt);
 
 
-        static void SetQuesionOrder(Attempt attempt, Quiz quiz)
+
+        static List<QuestionCopy> CopyQuestionsInOrder(List<Question> questions, int[] questionOrder) 
+            => questionOrder.Select(o => questions.First(q => q.Id == o))
+               .Select(q => new QuestionCopy { Id = q.Id, Answers = q.Answers, Text = q.Text })
+               .ToList();
+
+        static int[] GetQuesionOrder(IEnumerable<Question> questions)
         {
-            var ids = quiz!.Questions.Select(q => q.Id).ToList();
+            var ids = questions.Select(q => q.Id).ToList();
 
             var rnd = new Random();
-            attempt.QuestionOrder = ids.OrderBy(x => rnd.Next()).ToArray();
+            return ids.OrderBy(x => rnd.Next()).ToArray();
         }
     }
 
-    // DELETE: api/users/1/attempts/2
+    // DELETE: api/attempts/2
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteAttempt(int userId, int id)
+    public async Task<IActionResult> DeleteAttempt(int id)
     {
-        var user = await db.GetUserWithAttempts(userId);
-        if (user is null)
-        {
-            return NotFound();
-        }
+        var userId = User.GetUserID();
 
-        if (user.Attempts.FirstOrDefault(a => a.Id == id) is Attempt attempt)
+        if (await db.Attempts.FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId) is Attempt attempt)
         {
-            user.Attempts.Remove(attempt);
+            if (!attempt.IsOpen)
+            {
+                return Conflict();
+            }
+
+            db.Attempts.Remove(attempt);
             await db.SaveChangesAsync();
             return NoContent();
         }

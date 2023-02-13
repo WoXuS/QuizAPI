@@ -1,9 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using QuizAPI.Attributes;
 using QuizAPI.Models;
+using QuizAPI.Utils;
 
 namespace QuizAPI.Controllers;
 
-[Route("api/users/{userId}/quizzes/{quizId}/questions")]
+[AuthorizeJwt]
+[Route("api/quizzes/{quizId}/questions")]
 [ApiController]
 public class QuestionsController : ControllerBase
 {
@@ -14,11 +17,12 @@ public class QuestionsController : ControllerBase
         db = context;
     }
 
-    // GET: api/users/1/quizzes/2/questions
+    // GET: api/quizzes/2/questions
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Question>>> GetQuestions(int userId, int quizId)
+    public async Task<ActionResult<IEnumerable<Question>>> GetQuestions(int quizId)
     {
-        var quiz = await db.GetQuiz(userId, quizId);
+        var userId = User.GetUserID();
+        var quiz = await db.GetQuizWithQuestions(userId!, quizId);
         if (quiz is null)
         {
             return NotFound();
@@ -27,11 +31,12 @@ public class QuestionsController : ControllerBase
         return quiz.Questions;
     }
 
-    // GET: api/users/1/quizzes/2/questions/5
+    // GET: api/quizzes/2/questions/5
     [HttpGet("{id}")]
-    public async Task<ActionResult<Question>> GetQuestion(int userId, int quizId, int id)
+    public async Task<ActionResult<Question>> GetQuestion(int quizId, int id)
     {
-        var quiz = await db.GetQuiz(userId, quizId);
+        var userId = User.GetUserID();
+        var quiz = await db.GetQuizWithQuestions(userId!, quizId);
 
         return quiz?.Questions.FirstOrDefault(q => q.Id == id)
             is Question question
@@ -39,16 +44,18 @@ public class QuestionsController : ControllerBase
                 : NotFound();
     }
 
-    // PUT: api/users/1/quizzes/2/questions/3
+    // PUT: api/quizzes/2/questions/3
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutQuestion(int userId, int quizId, int id, Question question)
+    public async Task<IActionResult> PutQuestion(int quizId, int id, Question question)
     {
         if (id != question.Id)
         {
             return BadRequest();
         }
 
-        var quiz = await db.GetQuiz(userId, quizId, true);
+        var userId = User.GetUserID();
+        var quiz = await db.GetQuizWithQuestions(userId!, quizId);
+
         if (quiz is null)
         {
             return NotFound();
@@ -64,17 +71,20 @@ public class QuestionsController : ControllerBase
             return NotFound();
         }
 
+        question.QuizId = quizId;
         db.Update(question);
         await db.SaveChangesAsync();
 
         return NoContent();
     }
 
-    // POST: api/users/1/quizzes/2/questions
+    // POST: api/quizzes/2/questions
     [HttpPost]
-    public async Task<ActionResult<Question>> PostQuestion(int userId, int quizId, Question question)
+    public async Task<ActionResult<Question>> PostQuestion(int quizId, Question question)
     {
-        var quiz = await db.GetQuiz(userId, quizId);
+        var userId = User.GetUserID();
+        var quiz = await db.GetQuizWithQuestions(userId!, quizId);
+
         if (quiz is null)
         {
             return NotFound();
@@ -84,17 +94,20 @@ public class QuestionsController : ControllerBase
             return Conflict();
         }
 
-        quiz.Questions.Add(question);
+        question.QuizId = quizId;
+        db.Questions.Add(question);
         await db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetQuestion), new { userId, quizId, id = question.Id }, question);
+        return CreatedAtAction(nameof(GetQuestion), new { quizId, id = question.Id }, question);
     }
 
-    // DELETE: api/users/1/quizzes/2/questions/3
+    // DELETE: api/quizzes/2/questions/3
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteQuestion(int userId, int quizId, int id)
+    public async Task<IActionResult> DeleteQuestion(int quizId, int id)
     {
-        var quiz = await db.GetQuiz(userId, quizId);
+        var userId = User.GetUserID();
+        var quiz = await db.GetQuizWithQuestions(userId!, quizId);
+
         if (quiz is null)
         {
             return NotFound();
@@ -106,7 +119,7 @@ public class QuestionsController : ControllerBase
 
         if (quiz.Questions.FirstOrDefault(q => q.Id == id) is Question question)
         {
-            quiz.Questions.Remove(question);
+            db.Questions.Remove(question);
             await db.SaveChangesAsync();
             return NoContent();
         }

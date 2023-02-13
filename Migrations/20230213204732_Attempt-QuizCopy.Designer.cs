@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using QuizAPI.Models;
 
@@ -11,9 +12,11 @@ using QuizAPI.Models;
 namespace QuizAPI.Migrations
 {
     [DbContext(typeof(Db))]
-    partial class DbModelSnapshot : ModelSnapshot
+    [Migration("20230213204732_Attempt-QuizCopy")]
+    partial class AttemptQuizCopy
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -232,9 +235,6 @@ namespace QuizAPI.Migrations
                     b.Property<int>("QuizId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ResultId")
-                        .HasColumnType("int");
-
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -242,8 +242,6 @@ namespace QuizAPI.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("QuizId");
-
-                    b.HasIndex("ResultId");
 
                     b.HasIndex("UserId");
 
@@ -362,31 +360,6 @@ namespace QuizAPI.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
-            modelBuilder.Entity("QuizAPI.Models.Result", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AllCorrectAnswers")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ChosenCorrectAnswers")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ChosenIncorrectAnswers")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("Submitted")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Results");
-                });
-
             modelBuilder.Entity("QuizAPI.Models.User", b =>
                 {
                     b.Property<string>("Id")
@@ -456,13 +429,13 @@ namespace QuizAPI.Migrations
                         {
                             Id = "b5818efb-f28f-4486-a784-9f1eb44f51e1",
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "8b0b2f5b-e16d-4e4c-9750-ecc780769580",
+                            ConcurrencyStamp = "8f6ae197-8ece-4dd3-96f0-57c79b3e8ea6",
                             Email = "admin@admin.admin",
                             EmailConfirmed = false,
                             LockoutEnabled = false,
                             NormalizedEmail = "ADMIN@ADMIN.ADMIN",
                             NormalizedUserName = "ADMIN",
-                            PasswordHash = "AQAAAAIAAYagAAAAENuwsVAWNRmUeFRhdWBj4Ebrsl1cOUI71i+E3/Gv9PRPdnSuYlbVeXJy7gQi8kUHmg==",
+                            PasswordHash = "AQAAAAIAAYagAAAAEGP9Fnyo8iW/uFqLkpZFZ71TsBZxyD25csKpFJejKD1IQRRcvcBcqmxQxHvqUwnONw==",
                             PhoneNumberConfirmed = false,
                             SecurityStamp = "",
                             TwoFactorEnabled = false,
@@ -538,17 +511,11 @@ namespace QuizAPI.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("QuizAPI.Models.Result", "Result")
-                        .WithMany()
-                        .HasForeignKey("ResultId");
-
                     b.HasOne("QuizAPI.Models.User", null)
                         .WithMany("Attempts")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Result");
                 });
 
             modelBuilder.Entity("QuizAPI.Models.Question", b =>
