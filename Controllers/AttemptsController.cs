@@ -100,13 +100,13 @@ public class AttemptsController : ControllerBase
         }
 
         existing.IsOpen = false;
-        existing.Result = CreatedResult(existing);
+        existing.Result = CreateResult(existing);
         await db.SaveChangesAsync();
 
         return NoContent();
     }
 
-    private Result CreatedResult(Attempt existing)
+    private Result CreateResult(Attempt existing)
     {
         var answers = existing.QuizCopy.Questions
                 .SelectMany(q => q.Answers)
@@ -132,6 +132,18 @@ public class AttemptsController : ControllerBase
         };
 
         return result;
+    }
+
+    // GET: api/attempts/{id}/result
+    [HttpGet("{id}/result")]
+    public async Task<ActionResult<Result>> GetResult(int id)
+    {
+        var userId = User.GetUserID();
+        return (await db.Attempts.Include(a => a.Result)
+            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId))
+            ?.Result is Result result
+                ? result
+                : NotFound();
     }
 
     // POST: api/attempts

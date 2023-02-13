@@ -13,6 +13,7 @@ public class Attempt
 
     public QuizCopy QuizCopy { get; set; } = null!;
 
+    [JsonIgnore]
     public Result? Result { get; set; }
 
     [JsonIgnore]

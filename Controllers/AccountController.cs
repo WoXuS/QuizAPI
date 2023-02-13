@@ -149,10 +149,10 @@ public class AccountController : ControllerBase
 
     [AuthorizeJwt]
     [HttpGet("username")]
-    public async Task<IActionResult> GetUserName(string userId)
+    public async Task<ActionResult<string>> GetUserName(string userId)
     {
         var user = await userManager.FindByIdAsync(userId);
-        return user is null ? NotFound() : Ok(user.UserName);
+        return user is null ? NotFound() : user.UserName!;
     }
 
 }

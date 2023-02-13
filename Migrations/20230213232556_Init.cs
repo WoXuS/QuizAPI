@@ -69,6 +69,22 @@ namespace QuizAPI.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Results",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Submitted = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ChosenCorrectAnswers = table.Column<int>(type: "int", nullable: false),
+                    ChosenIncorrectAnswers = table.Column<int>(type: "int", nullable: false),
+                    AllCorrectAnswers = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Results", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AspNetRoleClaims",
                 columns: table => new
                 {
@@ -229,6 +245,8 @@ namespace QuizAPI.Migrations
                     QuestionOrder = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ChosenAnswers = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     IsOpen = table.Column<bool>(type: "bit", nullable: false),
+                    QuizCopy = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ResultId = table.Column<int>(type: "int", nullable: true),
                     UserId = table.Column<string>(type: "nvarchar(450)", nullable: false)
                 },
                 constraints: table =>
@@ -244,6 +262,11 @@ namespace QuizAPI.Migrations
                         name: "FK_Attempts_Quizzes_QuizId",
                         column: x => x.QuizId,
                         principalTable: "Quizzes",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Attempts_Results_ResultId",
+                        column: x => x.ResultId,
+                        principalTable: "Results",
                         principalColumn: "Id");
                 });
 
@@ -300,7 +323,7 @@ namespace QuizAPI.Migrations
             migrationBuilder.InsertData(
                 table: "AspNetUsers",
                 columns: new[] { "Id", "AccessFailedCount", "ConcurrencyStamp", "Email", "EmailConfirmed", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "TwoFactorEnabled", "UserName" },
-                values: new object[] { "b5818efb-f28f-4486-a784-9f1eb44f51e1", 0, "0d506196-821a-44e9-bf27-94e54f3475af", "admin@admin.admin", false, false, null, "ADMIN@ADMIN.ADMIN", "ADMIN", "AQAAAAIAAYagAAAAEJcs6moHiN3Br5qYrwS1lEe2mcP8Zlajzr8HHTMklS9iw95fVLCP3N4OKkW2MQ6jtQ==", null, false, "", false, "admin" });
+                values: new object[] { "b5818efb-f28f-4486-a784-9f1eb44f51e1", 0, "40ac0f1b-e939-4f59-949d-8d924db8edbd", "admin@admin.admin", false, false, null, "ADMIN@ADMIN.ADMIN", "ADMIN", "AQAAAAIAAYagAAAAEEKZquajqlE8AJQMk9/L4XST+AS/2Qsz34GhSCBgbZ4i/eZSDeU6fiKKO6Tag07mCg==", null, false, "", false, "admin" });
 
             migrationBuilder.InsertData(
                 table: "AspNetUserRoles",
@@ -361,6 +384,11 @@ namespace QuizAPI.Migrations
                 column: "QuizId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Attempts_ResultId",
+                table: "Attempts",
+                column: "ResultId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Attempts_UserId",
                 table: "Attempts",
                 column: "UserId");
@@ -416,6 +444,9 @@ namespace QuizAPI.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
+
+            migrationBuilder.DropTable(
+                name: "Results");
 
             migrationBuilder.DropTable(
                 name: "Quizzes");

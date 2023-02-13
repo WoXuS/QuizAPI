@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QuizAPI.Attributes;
 using QuizAPI.Models;
@@ -39,6 +40,46 @@ public class QuizzesController : ControllerBase
         return quiz is Quiz && quiz.UserId == userId
                 ? quiz
                 : NotFound();
+    }    
+    
+    public record QuizInfo(string Name, string Description, int QuestionCount, string UserId);
+
+    // GET: api/quizzes/5/info
+    [AllowAnonymous]
+    [HttpGet("{id}/info")]
+    public async Task<ActionResult<QuizInfo>> GetQuizInfo(int id)
+    {
+        var quiz = await db.Quizzes.Include(q=>q.Questions)
+            .FirstOrDefaultAsync(q=>q.Id==id&&q.IsOpen);
+
+        return quiz is Quiz
+                ? new QuizInfo(quiz.Name, quiz.Description, quiz.Questions.Count, quiz.UserId)
+                : NotFound();
+    }
+
+
+    public record QuizResult(string UserId, Result Result);
+
+    // GET: api/quizzes/5/results
+    [HttpGet("{id}/results")]
+    public async Task<ActionResult<IEnumerable<QuizResult>>> GetQuizResults(int id)
+    {
+        var userId = User.GetUserID();
+        var quiz = await db.Quizzes
+            .FirstOrDefaultAsync(q => q.Id == id && q.UserId == userId);
+        if (quiz is null)
+        {
+            return NotFound();
+        }
+
+        var attempts = db.Attempts.Include(a => a.Result)
+            .Where(a => !a.IsOpen && a.QuizId == quiz.Id && a.Result != null);
+
+        var results = attempts
+            .Select(a => new QuizResult( a.UserId, a.Result! ))
+            .ToListAsync();
+
+        return Ok(await results);
     }
 
     // PUT: api/quizzes/5
@@ -81,7 +122,7 @@ public class QuizzesController : ControllerBase
         }
         if (existing.IsOpen)
         {
-            return BadRequest(new {Errors = new[] { "quiz is already open" } });
+            return BadRequest(new { Errors = new[] { "quiz is already open" } });
         }
 
         existing.IsOpen = true;
@@ -103,7 +144,7 @@ public class QuizzesController : ControllerBase
         }
         if (!existing.IsOpen)
         {
-            return BadRequest(new {Errors = new[] { "quiz is already closed" } });
+            return BadRequest(new { Errors = new[] { "quiz is already closed" } });
         }
 
         existing.IsOpen = false;
@@ -130,7 +171,7 @@ public class QuizzesController : ControllerBase
     public async Task<IActionResult> DeleteQuiz(int id)
     {
         var userId = User.GetUserID();
-        
+
         if (await db.Quizzes.FirstOrDefaultAsync(q => q.Id == id && q.UserId == userId) is Quiz quiz)
         {
             if (quiz.IsOpen)
