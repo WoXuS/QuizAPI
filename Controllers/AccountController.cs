@@ -147,7 +147,6 @@ public class AccountController : ControllerBase
     }
 
 
-    [AuthorizeJwt]
     [HttpGet("username")]
     public async Task<ActionResult<string>> GetUserName(string userId)
     {
