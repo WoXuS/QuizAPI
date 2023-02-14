@@ -1,9 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using QuizAPI.Attributes;
 using QuizAPI.Models;
+using QuizAPI.Utils;
 
 namespace QuizAPI.Controllers;
 
-[Route("api/users/{userId}/quizzes")]
+[AuthorizeJwt]
+[Route("api/quizzes")]
 [ApiController]
 public class QuizzesController : ControllerBase
 {
@@ -14,48 +19,80 @@ public class QuizzesController : ControllerBase
         db = context;
     }
 
-    // GET: api/users/1/quizzes
+    // GET: api/quizzes
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Quiz>>> GetQuizzes(int userId)
+    public async Task<ActionResult<IEnumerable<Quiz>>> GetQuizzes()
     {
-        var user = await db.GetUser(userId);
-        if (user is null)
+        var userId = User.GetUserID();
+        var quizzes = db.Quizzes.Where(x => x.UserId == userId);
+
+        return await quizzes.ToListAsync();
+    }
+
+
+    // GET: api/quizzes/5
+    [HttpGet("{id}")]
+    public async Task<ActionResult<Quiz>> GetQuiz(int id)
+    {
+        var userId = User.GetUserID();
+        var quiz = await db.Quizzes.FindAsync(id);
+
+        return quiz is Quiz && quiz.UserId == userId
+                ? quiz
+                : NotFound();
+    }    
+    
+    public record QuizInfo(string Name, string Description, int QuestionCount, string UserId);
+
+    // GET: api/quizzes/5/info
+    [AllowAnonymous]
+    [HttpGet("{id}/info")]
+    public async Task<ActionResult<QuizInfo>> GetQuizInfo(int id)
+    {
+        var quiz = await db.Quizzes.Include(q=>q.Questions)
+            .FirstOrDefaultAsync(q=>q.Id==id&&q.IsOpen);
+
+        return quiz is Quiz
+                ? new QuizInfo(quiz.Name, quiz.Description, quiz.Questions.Count, quiz.UserId)
+                : NotFound();
+    }
+
+
+    public record QuizResult(string UserId, Result Result);
+
+    // GET: api/quizzes/5/results
+    [HttpGet("{id}/results")]
+    public async Task<ActionResult<IEnumerable<QuizResult>>> GetQuizResults(int id)
+    {
+        var userId = User.GetUserID();
+        var quiz = await db.Quizzes
+            .FirstOrDefaultAsync(q => q.Id == id && q.UserId == userId);
+        if (quiz is null)
         {
             return NotFound();
         }
 
-        return user.Quizzes;
+        var attempts = db.Attempts.Include(a => a.Result)
+            .Where(a => !a.IsOpen && a.QuizId == quiz.Id && a.Result != null);
+
+        var results = attempts
+            .Select(a => new QuizResult( a.UserId, a.Result! ))
+            .ToListAsync();
+
+        return Ok(await results);
     }
 
-
-    // GET: api/users/1/quizzes/5
-    [HttpGet("{id}")]
-    public async Task<ActionResult<Quiz>> GetQuiz(int userId, int id)
-    {
-        var user = await db.GetUser(userId);
-
-        return user?.Quizzes.FirstOrDefault(q => q.Id == id)
-            is Quiz quiz
-                ? quiz
-                : NotFound();
-    }
-
-    // PUT: api/users/1/quizzes/5
+    // PUT: api/quizzes/5
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutQuiz(int userId, int id, Quiz quiz)
+    public async Task<IActionResult> PutQuiz(int id, Quiz quiz)
     {
         if (id != quiz.Id)
         {
             return BadRequest();
         }
 
-        var user = await db.GetUser(userId, true);
-        if (user is null)
-        {
-            return NotFound();
-        }
-
-        var existing = user.Quizzes.FirstOrDefault(q => q.Id == id);
+        var userId = User.GetUserID();
+        var existing = db.Quizzes.AsNoTracking().FirstOrDefault(q => q.Id == id && q.UserId == userId);
         if (existing is null)
         {
             return NotFound();
@@ -66,74 +103,83 @@ public class QuizzesController : ControllerBase
         }
 
         quiz.IsOpen = false;
+        quiz.UserId = userId!;
         db.Update(quiz);
         await db.SaveChangesAsync();
 
         return NoContent();
     }
-    
-    // PUT: api/users/1/quizzes/5/open
-    [HttpPut("{id}/open")]
-    public async Task<IActionResult> OpenQuiz(int userId, int id)
-    {
-        var user = await db.GetUser(userId);
-        if (user is null)
-        {
-            return NotFound();
-        }
 
-        var existing = user.Quizzes.FirstOrDefault(q => q.Id == id);
+    // PATCH: api/quizzes/5/open
+    [HttpPatch("{id}/open")]
+    public async Task<IActionResult> OpenQuiz(int id)
+    {
+        var userId = User.GetUserID();
+        var existing = db.Quizzes.AsNoTracking().FirstOrDefault(q => q.Id == id && q.UserId == userId);
         if (existing is null)
         {
             return NotFound();
         }
-
         if (existing.IsOpen)
         {
-            return Conflict();
+            return BadRequest(new { Errors = new[] { "quiz is already open" } });
         }
 
         existing.IsOpen = true;
+        db.Update(existing);
         await db.SaveChangesAsync();
 
         return NoContent();
     }
 
-    // POST: api/users/1/quizzes
-    [HttpPost]
-    public async Task<ActionResult<Quiz>> PostQuiz(int userId, Quiz quiz)
+    // PATCH: api/quizzes/5/close
+    [HttpPatch("{id}/close")]
+    public async Task<IActionResult> CloseQuiz(int id)
     {
-        var user = await db.GetUser(userId);
-        if (user is null)
+        var userId = User.GetUserID();
+        var existing = db.Quizzes.AsNoTracking().FirstOrDefault(q => q.Id == id && q.UserId == userId);
+        if (existing is null)
         {
             return NotFound();
         }
+        if (!existing.IsOpen)
+        {
+            return BadRequest(new { Errors = new[] { "quiz is already closed" } });
+        }
 
-        quiz.IsOpen = false;
-
-        user.Quizzes.Add(quiz);
+        existing.IsOpen = false;
+        db.Update(existing);
         await db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetQuiz), new { userId, id = quiz.Id }, quiz);
+
+        return NoContent();
     }
 
-    // DELETE: api/users/1/quizzes/5
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteQuiz(int userId, int id)
+    // POST: api/quizzes
+    [HttpPost]
+    public async Task<ActionResult<Quiz>> PostQuiz(Quiz quiz)
     {
-        var user = await db.GetUser(userId);
-        if (user is null)
-        {
-            return NotFound();
-        }
+        var userId = User.GetUserID();
+        quiz.IsOpen = false;
+        quiz.UserId = userId!;
+        db.Quizzes.Add(quiz);
+        await db.SaveChangesAsync();
+        return CreatedAtAction(nameof(GetQuiz), new { id = quiz.Id }, quiz);
+    }
 
-        if (user.Quizzes.FirstOrDefault(q => q.Id == id) is Quiz quiz)
+    // DELETE: api/quizzes/5
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteQuiz(int id)
+    {
+        var userId = User.GetUserID();
+
+        if (await db.Quizzes.FirstOrDefaultAsync(q => q.Id == id && q.UserId == userId) is Quiz quiz)
         {
             if (quiz.IsOpen)
             {
                 return Conflict();
             }
 
-            user.Quizzes.Remove(quiz);
+            db.Quizzes.Remove(quiz);
             await db.SaveChangesAsync();
             return NoContent();
         }

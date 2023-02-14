@@ -1,9 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using QuizAPI.Attributes;
 using QuizAPI.Models;
+using QuizAPI.Utils;
 
 namespace QuizAPI.Controllers;
 
-[Route("api/users/{userId}/quizzes/{quizId}/questions/{questionId}/answers")]
+[AuthorizeJwt]
+[Route("api/quizzes/{quizId}/questions/{questionId}/answers")]
 [ApiController]
 public class AnswersController : ControllerBase
 {
@@ -14,24 +17,30 @@ public class AnswersController : ControllerBase
         db = context;
     }
 
-    // GET: api/users/1/quizzes/2/questions/3/answers
+    // GET: api/quizzes/2/questions/3/answers
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Answer>>> GetAnswers(int userId, int quizId, int questionId)
+    public async Task<ActionResult<IEnumerable<Answer>>> GetAnswers(int quizId, int questionId)
     {
-        var (_, question) = await db.GetQuestion(userId, quizId, questionId);
-        if (question is null)
+        var userId = User.GetUserID();
+        var tuple = await db.GetQuizAndQuestionWithAnswers(userId!, quizId, questionId);
+
+        if (tuple is null)
         {
             return NotFound();
         }
 
+        var question = tuple.Value.Item2;
         return question.Answers;
     }
 
-    // GET: api/users/1/quizzes/2/questions/3/answers/4
+    // GET: api/quizzes/2/questions/3/answers/4
     [HttpGet("{id}")]
-    public async Task<ActionResult<Answer>> GetAnswer(int userId, int quizId, int questionId, int id)
+    public async Task<ActionResult<Answer>> GetAnswer(int quizId, int questionId, int id)
     {
-        var (_, question) = await db.GetQuestion(userId, quizId, questionId);
+        var userId = User.GetUserID();
+        var tuple = await db.GetQuizAndQuestionWithAnswers(userId!, quizId, questionId);
+
+        var question = tuple.GetValueOrDefault().Item2;
 
         return question?.Answers.FirstOrDefault(a => a.Id == id)
             is Answer answer
@@ -39,70 +48,92 @@ public class AnswersController : ControllerBase
                 : NotFound();
     }
 
-    // PUT: api/users/1/quizzes/2/questions/3/answers/4
+    // PUT: api/quizzes/2/questions/3/answers/4
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutAnswer(int userId, int quizId, int questionId, int id, Answer answer)
+    public async Task<IActionResult> PutAnswer(int quizId, int questionId, int id, Answer answer)
     {
         if (id != answer.Id)
         {
             return BadRequest();
         }
 
-        var (quiz, question) = await db.GetQuestion(userId, quizId, questionId, true);
-        if (question is null)
+        var userId = User.GetUserID();
+        var tuple = await db.GetQuizAndQuestionWithAnswers(userId!, quizId, questionId);
+        if (tuple is null)
         {
             return NotFound();
         }
+
+        var quiz = tuple.Value.Item1;
         if (quiz.IsOpen)
         {
             return Conflict();
         }
 
-        var exists = question.Answers.Any(a => a.Id == id);
-        if (!exists)
+        var question = tuple.Value.Item2;
+        var existing = question.Answers.FirstOrDefault(a => a.Id == id);
+        if (existing is null)
         {
             return NotFound();
         }
 
-        db.Update(answer);
+        existing.Text = answer.Text;
+        existing.IsCorrect = answer.IsCorrect;
+        db.Update(existing);
         await db.SaveChangesAsync();
 
         return NoContent();
     }
 
-    // POST: api/users/1/quizzes/2/questions/3/answers
+    // POST: api/quizzes/2/questions/3/answers
     [HttpPost]
-    public async Task<ActionResult<Answer>> PostAnswer(int userId, int quizId, int questionId, Answer answer)
+    public async Task<ActionResult<Answer>> PostAnswer(int quizId, int questionId, Answer answer)
     {
-        var (quiz, question) = await db.GetQuestion(userId, quizId, questionId);
-        if (question is null)
+        var userId = User.GetUserID();
+        var tuple = await db.GetQuizAndQuestionWithAnswers(userId!, quizId, questionId);
+
+        if (tuple is null)
         {
             return NotFound();
         }
+
+        var quiz = tuple.Value.Item1;
         if (quiz.IsOpen)
         {
             return Conflict();
         }
 
+        var question = tuple.Value.Item2;
+        db.Attach(question);
         question.Answers.Add(answer);
         await db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetAnswer), new { userId, quizId, questionId, id = answer.Id }, answer);
+        return CreatedAtAction(nameof(GetAnswer), new { quizId, questionId, id = answer.Id }, answer);
     }
 
-    // DELETE: api/users/1/quizzes/2/questions/3/answers/4
+    // DELETE: api/quizzes/2/questions/3/answers/4
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteAnswer(int userId, int quizId, int questionId, int id)
+    public async Task<IActionResult> DeleteAnswer(int quizId, int questionId, int id)
     {
-        var (quiz, question) = await db.GetQuestion(userId, quizId, questionId);
+        var userId = User.GetUserID();
+        var tuple = await db.GetQuizAndQuestionWithAnswers(userId!, quizId, questionId);
+
+        if (tuple is null)
+        {
+            return NotFound();
+        }
+
+        var quiz = tuple.Value.Item1;
         if (quiz.IsOpen)
         {
             return Conflict();
         }
 
-        if (question?.Answers.FirstOrDefault(a => a.Id == id) is Answer answer)
+        var question = tuple.Value.Item2;
+
+        if (question.Answers.FirstOrDefault(a => a.Id == id) is Answer answer)
         {
-            question.Answers.Remove(answer);
+            db.Answers.Remove(answer);
             await db.SaveChangesAsync();
             return NoContent();
         }
