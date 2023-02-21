@@ -7,6 +7,12 @@ public record UserCredentialsDto(
         string ConfirmPassword = ""
         );
 
+public record UserCredentialsUpdateDto(
+        string UserName = "",
+        string Password = "",
+        string ConfirmPassword = ""
+        );
+
 public record RefreshDto(
     string Token = "",
     Guid RefreshToken = default
@@ -29,3 +35,8 @@ public record AuthResult(bool Succeeded, TokenPair? Tokens, IEnumerable<string>?
         return new AuthResult(false, null, errors);
     }
 }
+
+public record EmailConfirmationDto(
+    string UserName = "",
+    string EmailConfirmationtoken = ""  
+    );

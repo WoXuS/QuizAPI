@@ -40,12 +40,17 @@ public class AccountController : ControllerBase
 
 
     [HttpPost("register")]
-    public async Task<ActionResult<TokenPair>> Register(UserCredentialsDto dto)
+    public async Task<ActionResult<EmailConfirmationDto>> Register(UserCredentialsDto dto)
     {
         var result = await service.RegisterImpl(dto);
         await db.LogAuthEvent("register", dto.UserName, result.Succeeded);
 
-        return Unpack(result);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { result.Errors });
+        }
+        var emailConfirmationToken = await service.GetEmailConfirmationToken(dto.UserName);
+        return new EmailConfirmationDto(dto.UserName, emailConfirmationToken);
     }
 
 
@@ -117,7 +122,7 @@ public class AccountController : ControllerBase
 
     [AuthorizeJwt]
     [HttpPut("credentials")]
-    public async Task<IActionResult> UpdateUser(UserCredentialsDto dto)
+    public async Task<IActionResult> UpdateUser(UserCredentialsUpdateDto dto)
     {
         if (dto.Password != dto.ConfirmPassword)
         {
@@ -127,12 +132,6 @@ public class AccountController : ControllerBase
         var userId = User.GetUserID();
         var currentUser = await userManager.FindByIdAsync(userId!);
         var result = await userManager.SetUserNameAsync(currentUser!, dto.UserName);
-        if (!result.Succeeded)
-        {
-            return BadRequest(result);
-        }
-
-        result = await userManager.SetEmailAsync(currentUser!, dto.Email);
         if (!result.Succeeded)
         {
             return BadRequest(result);
@@ -149,11 +148,47 @@ public class AccountController : ControllerBase
     }
 
 
+    [AuthorizeJwt]
+    [HttpPut("email")]
+    public async Task<IActionResult> UpdateEmail(string emailAddress)
+    {
+        var userId = User.GetUserID();
+        var currentUser = await userManager.FindByIdAsync(userId!);
+
+        var result = await userManager.SetEmailAsync(currentUser!, emailAddress);
+        if (!result.Succeeded)
+        {
+            return BadRequest(result);
+        }
+
+        return NoContent();
+    }
+
+
     [HttpGet("username")]
     public async Task<ActionResult<string>> GetUserName(string userId)
     {
         var user = await userManager.FindByIdAsync(userId);
         return user is null ? NotFound() : user.UserName!;
     }
+
+
+    [HttpPatch("confirmEmail")]
+    public async Task<IActionResult> ConfirmEmailAddress(EmailConfirmationDto dto)
+    {
+        var success = await service.ConfirmEmailAddress(dto.UserName, dto.EmailConfirmationtoken);
+        return success 
+            ? NoContent() 
+            : BadRequest();
+    }
+
+
+    [HttpGet("emailConfirmationToken")]
+    public async Task<ActionResult<EmailConfirmationDto>> GetEmailConfirmationToken(string userName)
+    {
+        var emailConfirmationToken = await service.GetEmailConfirmationToken(userName);
+        return new EmailConfirmationDto(userName, emailConfirmationToken);
+    }
+
 
 }

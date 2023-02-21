@@ -25,7 +25,7 @@ builder.Services.AddDbContext<Db>(opt =>
 
 AddIdentity(builder);
 
-builder.Services.AddTransient<AuthenticationService>();   
+builder.Services.AddTransient<AuthenticationService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -100,6 +100,7 @@ static void AddIdentity(WebApplicationBuilder builder)
     builder.Services.AddIdentity<User, IdentityRole>(options =>
     {
         options.SignIn.RequireConfirmedAccount = false;
+        options.SignIn.RequireConfirmedEmail = true;
         options.User.RequireUniqueEmail = true;
         options.Password.RequireDigit = false;
         options.Password.RequiredLength = 6;
