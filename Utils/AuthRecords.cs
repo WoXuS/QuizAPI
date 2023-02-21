@@ -29,3 +29,8 @@ public record AuthResult(bool Succeeded, TokenPair? Tokens, IEnumerable<string>?
         return new AuthResult(false, null, errors);
     }
 }
+
+public record EmailConfirmationDto(
+    string UserName = "",
+    string EmailConfirmationtoken = ""  
+    );

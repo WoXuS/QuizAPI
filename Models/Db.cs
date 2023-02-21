@@ -82,7 +82,7 @@ public class Db : IdentityDbContext<User>
             NormalizedUserName = "ADMIN",
             Email = "admin@admin.admin",
             NormalizedEmail = "admin@admin.admin".ToUpper(),
-            EmailConfirmed = false,
+            EmailConfirmed = true,
             PasswordHash = hasher.HashPassword(null!, "admin"),
             SecurityStamp = string.Empty
         });
