@@ -26,7 +26,7 @@ jobs:
         run: dotnet build --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+        run: dotnet publish -c Release
         
       - name: dotnet bundle migration
         run: dotnet ef migrations bundle -p QuizAPI.csproj -o ${{env.DOTNET_ROOT}}/myapp/migrate
