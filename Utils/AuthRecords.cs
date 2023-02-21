@@ -7,6 +7,12 @@ public record UserCredentialsDto(
         string ConfirmPassword = ""
         );
 
+public record UserCredentialsUpdateDto(
+        string UserName = "",
+        string Password = "",
+        string ConfirmPassword = ""
+        );
+
 public record RefreshDto(
     string Token = "",
     Guid RefreshToken = default

@@ -120,7 +120,7 @@ public class AccountController : ControllerBase
 
     [AuthorizeJwt]
     [HttpPut("credentials")]
-    public async Task<IActionResult> UpdateUser(UserCredentialsDto dto)
+    public async Task<IActionResult> UpdateUser(UserCredentialsUpdateDto dto)
     {
         if (dto.Password != dto.ConfirmPassword)
         {
@@ -135,14 +135,25 @@ public class AccountController : ControllerBase
             return BadRequest(result);
         }
 
-        result = await userManager.SetEmailAsync(currentUser!, dto.Email);
+        var resetToken = await userManager.GeneratePasswordResetTokenAsync(currentUser!);
+        result = await userManager.ResetPasswordAsync(currentUser!, resetToken, dto.Password);
         if (!result.Succeeded)
         {
             return BadRequest(result);
         }
 
-        var resetToken = await userManager.GeneratePasswordResetTokenAsync(currentUser!);
-        result = await userManager.ResetPasswordAsync(currentUser!, resetToken, dto.Password);
+        return NoContent();
+    }
+
+
+    [AuthorizeJwt]
+    [HttpPut("email")]
+    public async Task<IActionResult> UpdateEmail(string emailAddress)
+    {
+        var userId = User.GetUserID();
+        var currentUser = await userManager.FindByIdAsync(userId!);
+
+        var result = await userManager.SetEmailAsync(currentUser!, emailAddress);
         if (!result.Succeeded)
         {
             return BadRequest(result);
