@@ -11,13 +11,24 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
-builder.Services.AddDbContext<Db>(opt => 
+builder.Services.AddCors(options => 
+    options.AddPolicy("CorsPolicy", builder =>
+        {
+            builder.SetIsOriginAllowed(_ => true)
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
+    )
+);
+
+builder.Services.AddDbContext<Db>(opt =>
     opt.UseSqlServer(builder.Configuration.GetConnectionString("QuizApiDb"))
 );
 
 AddIdentity(builder);
 
-builder.Services.AddTransient<AuthenticationService>();   
+builder.Services.AddTransient<AuthenticationService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
