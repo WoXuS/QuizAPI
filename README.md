@@ -16,7 +16,7 @@ Now you can access the secured endpoints. Try `/api/account/details` to check th
 
 In a short period, the access token you received will become outdated and you will no longer be authenticated (the token lifetime can be configured under `JwtSettings:Lifetime` in `appsettings.json`). To save the effort of typing the credentials again, copy the output you got from `/api/account/authenticate` and use it as input at `/api/account/refresh` - you will receive a new pair of tokens, in which the first one can be used to regain API access (using the `Authorize` button) while the second one is a corresponding refresh token.
 
-To create a new user account, use `/api/account/register`.
+To create a new user account, use `/api/account/register`. Registration will yield an email confirmation token that should be used at `/api/account/confirmEmail` to validate the account, as it will be impossible to sign up to an account with its email address unconfirmed. Should it be necessary, the email confirmation token can also be retrieved under `/api/account/emailConfirmationToken`. Any subsequent changes of the account's email address will require the same steps.
 
 # Remarks
 Most endpoints are secured. From `/api/account`, only the following are public:

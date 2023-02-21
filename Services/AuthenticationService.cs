@@ -93,6 +93,11 @@ public class AuthenticationService
 
         if (!isPasswordValid.Succeeded)
         {
+            if (isPasswordValid.IsNotAllowed)
+            {
+                return Error(new[] { "email not confirmed" });
+            }
+
             return Error(new[] { "password invalid" });
         }
 
@@ -256,4 +261,28 @@ public class AuthenticationService
         return (true, null);
     }
 
+    public async Task<string> GetEmailConfirmationToken(string userName)
+    {
+        var user = await userManager.FindByNameAsync(userName);
+
+        if (user is null)
+        {
+            throw new InvalidOperationException($"user with userName '{userName}' does not exist");
+        }
+
+        return await userManager.GenerateEmailConfirmationTokenAsync(user);
+    }
+
+    public async Task<bool> ConfirmEmailAddress(string userName, string emailConfirmationToken)
+    {
+        var user = await userManager.FindByNameAsync(userName);
+
+        if (user is null)
+        {
+            throw new InvalidOperationException($"user with userName '{userName}' does not exist");
+        }
+
+        var result = await userManager.ConfirmEmailAsync(user, emailConfirmationToken);
+        return result.Succeeded;
+    }
 }
