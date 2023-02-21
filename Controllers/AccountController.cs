@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using QuizAPI.Attributes;
 using QuizAPI.Models;
@@ -9,6 +10,7 @@ using System.IdentityModel.Tokens.Jwt;
 namespace QuizAPI.Controllers;
 
 [Route("api/account")]
+[EnableCors("CorsPolicy")]
 [ApiController]
 public class AccountController : ControllerBase
 {

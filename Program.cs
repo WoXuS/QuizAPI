@@ -11,14 +11,13 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
-builder.Services.AddCors(
-options => options.AddPolicy("CorsPo1icy", builder =>
-{
-    builder.SetIsOriginAllowed(_ => true)
-    .AllowAnyHeader()
-    .AllowAnyMethod()
-    .AllowCredentials();
-}));
+builder.Services.AddCors(options => options.AddPolicy("CorsPo1icy", builder =>
+    {
+        builder.SetIsOriginAllowed(_ => true)
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials();
+    }));
 
 builder.Services.AddDbContext<Db>(opt => 
     opt.UseSqlServer(builder.Configuration.GetConnectionString("QuizApiDb"))
@@ -34,16 +33,16 @@ builder.Services.AddSwaggerGen(ConfigureSwagger());
 
 var app = builder.Build();
 
+app.UseSwagger();
+
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
+if (app.Environment.IsDevelopment()) { 
     app.UseSwaggerUI();
 }
 
-app.UseCors("CorsPolicy");
-
 app.UseHttpsRedirection();
+
+app.UseCors("CorsPolicy");
 
 app.UseAuthentication();
 app.UseAuthorization();
